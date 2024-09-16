@@ -1,0 +1,47 @@
+# Unit test class
+import unittest
+from function import has_subquery
+class TestHasSubquery(unittest.TestCase):
+
+    def test_simple_subquery(self):
+        sql = "SELECT * FROM (SELECT id FROM users) AS subquery"
+        self.assertTrue(has_subquery(sql))
+
+    def test_no_subquery(self):
+        sql = "SELECT * FROM users"
+        self.assertFalse(has_subquery(sql))
+
+    def test_nested_subquery(self):
+        sql = "SELECT * FROM (SELECT * FROM (SELECT id FROM users) AS inner_subquery) AS outer_subquery"
+        self.assertTrue(has_subquery(sql))
+
+    def test_subquery_in_where_clause(self):
+        sql = "SELECT * FROM products WHERE price > (SELECT AVG(price) FROM products)"
+        self.assertTrue(has_subquery(sql))
+
+    def test_subquery_in_join(self):
+        sql = "SELECT * FROM orders JOIN (SELECT id FROM customers WHERE country='USA') AS us_customers ON orders.customer_id = us_customers.id"
+        self.assertTrue(has_subquery(sql))
+
+    def test_complex_query_no_subquery(self):
+        sql = "SELECT e.name, d.department_name FROM employees e JOIN departments d ON e.department_id = d.id WHERE e.salary > 50000 ORDER BY e.name"
+        self.assertFalse(has_subquery(sql))
+
+    def test_subquery_in_having_clause(self):
+        sql = "SELECT department, AVG(salary) FROM employees GROUP BY department HAVING AVG(salary) > (SELECT AVG(salary) FROM employees)"
+        self.assertTrue(has_subquery(sql))
+
+    def test_union_with_subquery(self):
+        sql = "SELECT * FROM table1 UNION ALL (SELECT * FROM (SELECT id FROM table2) AS subquery)"
+        self.assertTrue(has_subquery(sql))
+
+    def test_invalid_sql(self):
+        sql = "This is not a valid SQL query"
+        self.assertFalse(has_subquery(sql))
+
+    def test_empty_string(self):
+        sql = ""
+        self.assertFalse(has_subquery(sql))
+
+if __name__ == '__main__':
+    unittest.main()

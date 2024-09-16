@@ -1,0 +1,89 @@
+# Unit test class
+import unittest
+from function import has_group_by
+class TestHasGroupBy(unittest.TestCase):
+
+    def test_simple_group_by(self):
+        sql = "SELECT department, AVG(salary) FROM employees GROUP BY department"
+        self.assertTrue(has_group_by(sql))
+
+    def test_group_by_with_count(self):
+        sql = "SELECT country, COUNT(*) FROM customers GROUP BY country"
+        self.assertTrue(has_group_by(sql))
+
+    def test_group_by_with_function(self):
+        sql = "SELECT YEAR(order_date), COUNT(*) FROM orders GROUP BY YEAR(order_date)"
+        self.assertTrue(has_group_by(sql))
+
+    def test_group_by_multiple_columns(self):
+        sql = "SELECT department, job_title, AVG(salary) FROM employees GROUP BY department, job_title"
+        self.assertTrue(has_group_by(sql))
+
+    def test_group_by_with_having(self):
+        sql = "SELECT customer_id, SUM(total) AS total_spent FROM orders GROUP BY customer_id HAVING total_spent > 1000"
+        self.assertTrue(has_group_by(sql))
+
+    def test_group_by_with_complex_expression(self):
+        sql = "SELECT EXTRACT(YEAR FROM date), EXTRACT(MONTH FROM date), SUM(amount) FROM transactions GROUP BY EXTRACT(YEAR FROM date), EXTRACT(MONTH FROM date)"
+        self.assertTrue(has_group_by(sql))
+
+    def test_no_group_by_simple_select(self):
+        sql = "SELECT * FROM employees"
+        self.assertFalse(has_group_by(sql))
+
+    def test_no_group_by_with_where(self):
+        sql = "SELECT name, salary FROM employees WHERE department = 'Sales'"
+        self.assertFalse(has_group_by(sql))
+
+    def test_no_group_by_with_join(self):
+        sql = "SELECT e.name, d.department_name FROM employees e JOIN departments d ON e.department_id = d.id"
+        self.assertFalse(has_group_by(sql))
+
+    def test_no_group_by_with_subquery(self):
+        sql = "SELECT customer_name, (SELECT COUNT(*) FROM orders WHERE orders.customer_id = customers.id) AS order_count FROM customers"
+        self.assertFalse(has_group_by(sql))
+
+    def test_group_by_with_subquery(self):
+        sql = """
+        SELECT 
+            (SELECT department_name FROM departments WHERE departments.id = employees.department_id) AS dept,
+            AVG(salary)
+        FROM 
+            employees
+        GROUP BY 
+            (SELECT department_name FROM departments WHERE departments.id = employees.department_id)
+        """
+        self.assertTrue(has_group_by(sql))
+
+
+
+    def test_group_by_in_subquery_from(self):
+        sql = """
+        SELECT dept_summary.department, dept_summary.avg_salary
+        FROM (
+            SELECT department, AVG(salary) as avg_salary
+            FROM employees
+            GROUP BY department
+        ) AS dept_summary
+        WHERE dept_summary.avg_salary > 50000
+        """
+        self.assertTrue(has_group_by(sql))
+
+
+    def test_group_by_in_subquery_and_external(self):
+        sql = """
+        SELECT 
+            region,
+            AVG(dept_summary.avg_salary) as region_avg_salary
+        FROM (
+            SELECT department, region, AVG(salary) as avg_salary
+            FROM employees
+            GROUP BY department, region
+        ) AS dept_summary
+        GROUP BY region
+        HAVING AVG(dept_summary.avg_salary) > 60000
+        """
+        self.assertTrue(has_group_by(sql))
+
+if __name__ == '__main__':
+    unittest.main()
